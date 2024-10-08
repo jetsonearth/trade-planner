@@ -34,7 +34,7 @@ const TradePlanner = () => {
 
   const calculateShares = (percentage) => {
     const positionSize = parseFloat(portfolioValue) * (percentage / 100);
-    return (positionSize / parseFloat(stockPrice)).toFixed(1);
+    return (positionSize / parseFloat(stockPrice)).toFixed(2); // Changed to 2 decimal places
   };
 
   const calculateRiskAmount = () => {
