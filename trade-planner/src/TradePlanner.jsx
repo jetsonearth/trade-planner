@@ -5,14 +5,13 @@ import { Label } from "./components/ui/label";
 
 const TradePlanner = () => {
   const [portfolioValue, setPortfolioValue] = useState('');
-  const [stockPrice, setStockPrice] = useState('');
+  const [entryPrice, setEntryPrice] = useState('');
   const [atrPercentage, setAtrPercentage] = useState('');
   const [lowOfDay, setLowOfDay] = useState('');
-  const [riskPercentage, setRiskPercentage] = useState('1');
-  const [profitRatio, setProfitRatio] = useState('2');
+  const [profitRatio, setProfitRatio] = useState('');
 
   const calculateStopLoss = () => {
-    const price = parseFloat(stockPrice);
+    const price = parseFloat(entryPrice);
     const atrStop = price - (price * parseFloat(atrPercentage) / 100);
     const lodStop = parseFloat(lowOfDay);
     const maxStopLoss = price * 0.93; // 7% max stop loss
@@ -32,19 +31,25 @@ const TradePlanner = () => {
     return { price: stopLoss.toFixed(2), logic };
   };
 
-  const calculateShares = (percentage) => {
+  const calculatePositionDetails = (percentage) => {
     const positionSize = parseFloat(portfolioValue) * (percentage / 100);
-    return (positionSize / parseFloat(stockPrice)).toFixed(2); // Changed to 2 decimal places
-  };
+    const shares = positionSize / parseFloat(entryPrice);
+    const { price: stopLossPrice } = calculateStopLoss();
+    const riskPerShare = parseFloat(entryPrice) - parseFloat(stopLossPrice);
+    const riskAmount = riskPerShare * shares;
+    const riskPercentage = (riskAmount / parseFloat(portfolioValue)) * 100;
 
-  const calculateRiskAmount = () => {
-    return (parseFloat(portfolioValue) * (parseFloat(riskPercentage) / 100)).toFixed(2);
+    return {
+      shares: shares.toFixed(2),
+      riskAmount: riskAmount.toFixed(2),
+      riskPercentage: riskPercentage.toFixed(2)
+    };
   };
 
   const calculateProfitTarget = () => {
-    const stopLoss = parseFloat(calculateStopLoss().price);
-    const entry = parseFloat(stockPrice);
-    const risk = entry - stopLoss;
+    const { price: stopLossPrice } = calculateStopLoss();
+    const entry = parseFloat(entryPrice);
+    const risk = entry - parseFloat(stopLossPrice);
     return (entry + (risk * parseFloat(profitRatio))).toFixed(2);
   };
 
@@ -52,7 +57,6 @@ const TradePlanner = () => {
   const positionSizes = [5, 10, 15, 20];
 
   useEffect(() => {
-    // Add Notion-like serif font
     const link = document.createElement('link');
     link.href = 'https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap';
     link.rel = 'stylesheet';
@@ -68,13 +72,12 @@ const TradePlanner = () => {
             <CardTitle className="text-4xl font-bold text-center text-orange-500">Trade Planner</CardTitle>
           </CardHeader>
           <CardContent className="p-8">
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-2 gap-8 mb-8">
               {[
                 { id: 'portfolioValue', label: 'Portfolio Value ($)', value: portfolioValue, setter: setPortfolioValue },
-                { id: 'stockPrice', label: 'Stock Price ($)', value: stockPrice, setter: setStockPrice },
+                { id: 'entryPrice', label: 'Entry Price ($)', value: entryPrice, setter: setEntryPrice },
                 { id: 'atrPercentage', label: 'ATR Percentage (%)', value: atrPercentage, setter: setAtrPercentage },
                 { id: 'lowOfDay', label: 'Low of Day ($)', value: lowOfDay, setter: setLowOfDay },
-                { id: 'riskPercentage', label: 'Risk Percentage (%)', value: riskPercentage, setter: setRiskPercentage },
                 { id: 'profitRatio', label: 'Profit/Risk Ratio', value: profitRatio, setter: setProfitRatio }
               ].map((field) => (
                 <div key={field.id}>
@@ -91,31 +94,37 @@ const TradePlanner = () => {
               ))}
             </div>
 
-            {portfolioValue && stockPrice && atrPercentage && lowOfDay && (
-              <div className="mt-8 space-y-8">
+            {portfolioValue && entryPrice && atrPercentage && lowOfDay && profitRatio && (
+              <div className="space-y-8">
                 <div className="grid grid-cols-2 gap-8">
-                  <div className="text-2xl font-semibold text-orange-400 bg-gray-700 p-6 rounded-md">
+                  <div className="text-2xl font-semibold text-orange-400 bg-gray-700 p-6 rounded-md h-full">
                     <span>Stop Loss: ${stopLossPrice}</span>
                     <span className="block text-xl text-orange-300 mt-2">({stopLossLogic})</span>
                   </div>
-                  <div className="text-2xl font-semibold text-orange-400 bg-gray-700 p-6 rounded-md">
-                    <span>Risk Amount: ${calculateRiskAmount()}</span>
-                    <span className="block text-xl text-orange-300 mt-2">({riskPercentage}% of portfolio)</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="text-2xl font-semibold text-orange-400 bg-gray-700 p-6 rounded-md">
+                  <div className="text-2xl font-semibold text-orange-400 bg-gray-700 p-6 rounded-md h-full">
                     <span>Profit Target: ${calculateProfitTarget()}</span>
                     <span className="block text-xl text-orange-300 mt-2">({profitRatio}:1 ratio)</span>
                   </div>
-                  <div className="text-2xl font-semibold text-orange-400 bg-gray-700 p-6 rounded-md">
-                    <span>Position Sizes:</span>
-                    {positionSizes.map((size) => (
-                      <div key={size} className="text-xl mt-2">
-                        <span className="text-orange-300">{size}%:</span>
-                        <span className="font-medium text-orange-400 ml-2">{calculateShares(size)} shares</span>
-                      </div>
-                    ))}
+                </div>
+                <div className="bg-gray-700 p-6 rounded-md">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-2xl font-semibold text-orange-400">Position Size</div>
+                    <div className="text-2xl font-semibold text-orange-400">Risk</div>
+                    {positionSizes.map((size) => {
+                      const { shares, riskAmount, riskPercentage } = calculatePositionDetails(size);
+                      return (
+                        <React.Fragment key={size}>
+                          <div className="text-xl">
+                            <span className="text-orange-300">{size}%:</span>
+                            <span className="font-medium text-orange-400 ml-2">{shares} shares</span>
+                          </div>
+                          <div className="text-xl">
+                            <span className="text-orange-300">${riskAmount}</span>
+                            <span className="text-orange-400 ml-2">({riskPercentage}%)</span>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
